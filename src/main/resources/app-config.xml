@@ -15,5 +15,5 @@
         <property name="user" value="${dataSource.user}"/>
     </bean>
     
-    <context:property-placeholder location="datasource.properties"/>
+    <context:property-placeholder location="jdbc.properties"/>
 </beans>

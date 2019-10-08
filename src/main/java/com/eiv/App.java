@@ -24,6 +24,7 @@ public class App {
     public static void main(String[] args) throws Exception {
         App app = CTX.getBean(App.class);
         app.run();
+       
     }
     
     public void run() throws Exception {        
@@ -31,6 +32,9 @@ public class App {
                 new RuntimeException("Provincia no encontrada"));
         
         System.out.println(provincia);
+        
+        ProvinciaEntity nuevaProvincia = new ProvinciaEntity(6L, "Mendoza");        
+        provinciaRepo.insert(nuevaProvincia);
         
         List<ProvinciaEntity> provincias = provinciaRepo.findAll();
         
