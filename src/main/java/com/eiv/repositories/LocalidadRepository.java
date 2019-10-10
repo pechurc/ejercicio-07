@@ -1,7 +1,6 @@
 package com.eiv.repositories;
 
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,10 +10,8 @@ import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.SqlParameterValue;
-import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.eiv.entities.LocalidadEntity;
@@ -22,18 +19,18 @@ import com.eiv.entities.LocalidadEntity;
 @Repository
 public class LocalidadRepository implements CrudRepository<LocalidadEntity, Long> {
     
-    private static final String SQL_FIND_BY_ID = "SELECT * FROM localidades WHERE id=?";
+    private static final String SQL_FIND_BY_ID = "SELECT * FROM localidades WHERE id=:id";
     private static final String SQL_FIND_BY_PROVINCIA = "SELECT * FROM localidades "
-            + "WHERE provinciaId=?";
+            + "WHERE provinciaId=:provinciaId";
     private static final String SQL_FIND_ALL = "SELECT * FROM localidades";
-
-    private JdbcTemplate jdbcTemplate;
-    private SimpleJdbcInsert simpleJdbcInsert;
+    private static final String SQL_INSERT = "INSERT INTO localidades (id, nombre, provinciaId)"
+            + " VALUES (:id, :nombre, :provinciaId);";
+    
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     
     @Autowired
     public LocalidadRepository(DataSource dataSource) throws SQLException {
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate).withTableName("localidades");       
+        namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);      
     }
     
     private final RowMapper<LocalidadEntity> rowMapper = (rs, row) -> {
@@ -47,10 +44,11 @@ public class LocalidadRepository implements CrudRepository<LocalidadEntity, Long
     public Optional<LocalidadEntity> findById(Long id) {
 
         try {
-            SqlParameterValue paramId = new SqlParameterValue(Types.INTEGER, id);
+            Map<String, Object> params = new HashMap<>();
+            params.put("id", id);
         
-            LocalidadEntity localidadEntity = jdbcTemplate.queryForObject(
-                    SQL_FIND_BY_ID, rowMapper, paramId);
+            LocalidadEntity localidadEntity = namedParameterJdbcTemplate.queryForObject(
+                    SQL_FIND_BY_ID, params, rowMapper);
             
             return Optional.of(localidadEntity);  
         } catch (DataAccessException e) {
@@ -61,17 +59,19 @@ public class LocalidadRepository implements CrudRepository<LocalidadEntity, Long
     @Override
     public List<LocalidadEntity> findAll() {
         
-        List<LocalidadEntity> resultados = jdbcTemplate.query(SQL_FIND_ALL, rowMapper);
+        List<LocalidadEntity> resultados = namedParameterJdbcTemplate
+                .query(SQL_FIND_ALL, rowMapper);
         
         return resultados;
     }
 
     public List<LocalidadEntity> findAllByProvincia(Long provinciaId) {
         
-        SqlParameterValue paramId = new SqlParameterValue(Types.INTEGER, provinciaId);
+        Map<String, Object> params = new HashMap<>();
+        params.put("provinciaId", provinciaId);
         
-        List<LocalidadEntity> resultados = jdbcTemplate
-                .query(SQL_FIND_BY_PROVINCIA, rowMapper, paramId);
+        List<LocalidadEntity> resultados = namedParameterJdbcTemplate
+                .query(SQL_FIND_BY_PROVINCIA, params, rowMapper);
         
         return resultados;
     }
@@ -85,23 +85,14 @@ public class LocalidadRepository implements CrudRepository<LocalidadEntity, Long
         parameters.put("nombre", t.getNombre());
         parameters.put("provinciaId", t.getProvinciaId());
 
-        simpleJdbcInsert.execute(parameters);        
+        namedParameterJdbcTemplate.update(SQL_INSERT, parameters);        
     }
     
-    public JdbcTemplate getJdbcTemplate() {
-        return jdbcTemplate;
+    public NamedParameterJdbcTemplate getJdbcTemplate() {
+        return namedParameterJdbcTemplate;
     }
 
-    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public void setJdbcTemplate(NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
-
-    public SimpleJdbcInsert getSimpleJdbcInsert() {
-        return simpleJdbcInsert;
-    }
-
-    public void setSimpleJdbcInsert(SimpleJdbcInsert simpleJdbcInsert) {
-        this.simpleJdbcInsert = simpleJdbcInsert;
-    }
-
 }

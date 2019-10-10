@@ -1,7 +1,6 @@
 package com.eiv.repositories;
 
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,10 +10,8 @@ import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.SqlParameterValue;
-import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.eiv.entities.ProvinciaEntity;
@@ -22,11 +19,12 @@ import com.eiv.entities.ProvinciaEntity;
 @Repository
 public class ProvinciaRepository implements CrudRepository<ProvinciaEntity, Long> {
 
-    private static final String SQL_FIND_BY_ID = "SELECT * FROM provincias WHERE id=?";
+    private static final String SQL_FIND_BY_ID = "SELECT * FROM provincias WHERE id=:id";
     private static final String SQL_FIND_ALL = "SELECT * FROM provincias";
+    private static final String SQL_INSERT = "INSERT INTO provincias (id, nombre) "
+            + "VALUES (:id, :nombre);";
 
-    private JdbcTemplate jdbcTemplate;
-    private SimpleJdbcInsert simpleJdbcInsert;
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     
     private final RowMapper<ProvinciaEntity> rowMapper = (rs, row) -> {
         long id = rs.getLong("id");
@@ -36,18 +34,18 @@ public class ProvinciaRepository implements CrudRepository<ProvinciaEntity, Long
     
     @Autowired
     public ProvinciaRepository(DataSource dataSource) throws SQLException {
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate).withTableName("provincias");       
+        namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);   
     }
     
     @Override
     public Optional<ProvinciaEntity> findById(Long id) {
         
         try {
-            SqlParameterValue paramId = new SqlParameterValue(Types.INTEGER, id);
+            Map<String, Object> params = new HashMap<>();
+            params.put("id", id);
         
-            ProvinciaEntity provinciaEntity = jdbcTemplate.queryForObject(
-                    SQL_FIND_BY_ID, rowMapper, paramId);
+            ProvinciaEntity provinciaEntity = namedParameterJdbcTemplate.queryForObject(
+                    SQL_FIND_BY_ID, params, rowMapper);
             
             return Optional.of(provinciaEntity);  
         } catch (DataAccessException e) {
@@ -58,7 +56,8 @@ public class ProvinciaRepository implements CrudRepository<ProvinciaEntity, Long
     @Override
     public List<ProvinciaEntity> findAll() {
 
-        List<ProvinciaEntity> resultados = jdbcTemplate.query(SQL_FIND_ALL, rowMapper);
+        List<ProvinciaEntity> resultados = namedParameterJdbcTemplate
+                .query(SQL_FIND_ALL, rowMapper);
         
         return resultados;
     }
@@ -71,22 +70,14 @@ public class ProvinciaRepository implements CrudRepository<ProvinciaEntity, Long
         parameters.put("id", t.getId());
         parameters.put("nombre", t.getNombre());
 
-        simpleJdbcInsert.execute(parameters);
+        namedParameterJdbcTemplate.update(SQL_INSERT, parameters);
     }
     
-    public JdbcTemplate getJdbcTemplate() {
-        return jdbcTemplate;
+    public NamedParameterJdbcTemplate getJdbcTemplate() {
+        return namedParameterJdbcTemplate;
     }
 
-    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
-
-    public SimpleJdbcInsert getSimpleJdbcInsert() {
-        return simpleJdbcInsert;
-    }
-
-    public void setSimpleJdbcInsert(SimpleJdbcInsert simpleJdbcInsert) {
-        this.simpleJdbcInsert = simpleJdbcInsert;
+    public void setJdbcTemplate(NamedParameterJdbcTemplate jdbcTemplate) {
+        this.namedParameterJdbcTemplate = jdbcTemplate;
     }
 }
